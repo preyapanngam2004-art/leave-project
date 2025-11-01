@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แดชบอร์ด - ระบบลางานออนไลน์</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="logo">ระบบลางาน</div>
+        <nav>
+            <a href="dashboard.html">แดชบอร์ด</a>
+            <a href="#" id="navUsername">(กำลังโหลด...)</a>
+            <a href="login.html" onclick="localStorage.clear()">ออกจากระบบ</a>
+        </nav>
+    </div>
+
+    <div class="container">
+
+        <div class="card">
+            <div class="card-header">
+                <h2>สรุปยอดวันลาคงเหลือ (ปี 2025)</h2>
+                <a href="#" class="btn-primary" onclick="document.getElementById('leaveModal').style.display='block'; return false;">
+                    + ยื่นใบลาใหม่
+                </a>
+            </div>
+            <div class="quota-container" id="quotaContainer">
+                <p>กำลังโหลดข้อมูลโควต้า...</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>ประวัติการลาของฉัน</h2>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ประเภทการลา</th>
+                        <th>วันที่เริ่ม</th>
+                        <th>วันที่สิ้นสุด</th>
+                        <th>สถานะ</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                    <tr><td colspan="4" style="text-align: center;">กำลังโหลดประวัติ...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="leaveModal" class="modal-overlay" onclick="this.style.display='none'; document.getElementById('leaveRequestForm').reset(); document.getElementById('submitLeaveButton').disabled = false; document.getElementById('submitLeaveButton').textContent = 'ส่งคำขอ';">
+        <div class="modal-content" onclick="event.stopPropagation();">
+            <div class="card-header">
+                <h2>แบบฟอร์มยื่นใบลา</h2>
+            </div>
+            
+            <form id="leaveRequestForm">
+                <div class="form-group">
+                    <label for="leaveType">ประเภทการลา</label>
+                    <select id="leaveType" name="leaveType" required>
+                        <option value="">-- เลือกประเภท --</option>
+                        <option value="1">ลาป่วย</option>
+                        <option value="2">ลากิจ</option>
+                        <option value="3">ลาพักร้อน</option>
+                        <option value="4">ลาคลอด</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="startDate">วันที่เริ่มลา</label>
+                    <input type="date" id="startDate" name="startDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="endDate">วันที่สิ้นสุด</label>
+                    <input type="date" id="endDate" name="endDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="reason">เหตุผล</label>
+                    <textarea id="reason" name="reason" rows="3"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="attachment">แนบไฟล์ (ใบรับรองแพทย์, ฯลฯ)</label>
+                    <input type="file" id="attachment" name="attachment"> 
+                </div>
+                
+                <button type="submit" id="submitLeaveButton" class="btn">ส่งคำขอ</button>
+            </form>
+        </div>
+    </div>
+
+<script>
+    const user = JSON.parse(localStorage.getItem('user'));
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!user) {
+            alert('กรุณาเข้าสู่ระบบก่อน');
+            window.location.href = 'login.html';
+            return;
+        }
+
+        document.getElementById('navUsername').textContent = `${user.FirstName} ${user.LastName}`;
+        loadBalances(user.Emp_ID);
+        loadHistory(user.Emp_ID);
+    });
+
+    async function loadBalances(empId) {
+        try {
+            const response = await fetch(`http://localhost:3000/api/balances/${empId}`);
+            const balances = await response.json();
+            
+            const container = document.getElementById('quotaContainer');
+            container.innerHTML = ''; 
+            
+            balances.forEach(b => {
+                container.innerHTML += `
+                    <div class="quota-box">
+                        <h3>${b.TypeName}</h3>
+                        <div class="days">${parseInt(b.RemainingDays)}</div>
+                        <span>วัน</span>
+                    </div>
+                `;
+            });
+        } catch (error) {
+            document.getElementById('quotaContainer').innerHTML = '<p>ไม่สามารถโหลดข้อมูลโควต้าได้</p>';
+        }
+    }
+
+    async function loadHistory(empId) {
+        try {
+            const response = await fetch(`http://localhost:3000/api/history/${empId}`);
+            const history = await response.json();
+
+            const tableBody = document.getElementById('historyTableBody');
+            tableBody.innerHTML = ''; 
+
+            if (history.length === 0) {
+                 tableBody.innerHTML = '<tr><td colspan="4" style="text-align: center;">ไม่พบประวัติการลา</td></tr>';
+                 return;
+            }
+
+            history.forEach(h => {
+                let statusText = '';
+                let statusColor = '';
+                if (h.Status === 'Approved') {
+                    statusText = 'อนุมัติแล้ว';
+                    statusColor = 'green';
+                } else if (h.Status === 'Rejected') {
+                    statusText = 'ไม่อนุมัติ';
+                    statusColor = 'red';
+                } else {
+                    statusText = 'รออนุมัติ';
+                    statusColor = 'orange';
+                }
+
+                tableBody.innerHTML += `
+                    <tr>
+                        <td>${h.TypeName}</td>
+                        <td>${new Date(h.StartDate).toLocaleDateString('th-TH')}</td>
+                        <td>${new Date(h.EndDate).toLocaleDateString('th-TH')}</td>
+                        <td><span style="color: ${statusColor}; font-weight: bold;">${statusText}</span></td>
+                    </tr>
+                `;
+            });
+        } catch (error) {
+            document.getElementById('historyTableBody').innerHTML = '<tr><td colspan="4" style="text-align: center;">ไม่สามารถโหลดประวัติได้</td></tr>';
+        }
+    }
+
+    document.getElementById('leaveRequestForm').addEventListener('submit', async function(event) {
+        event.preventDefault(); 
+        
+        const submitButton = document.getElementById('submitLeaveButton');
+        submitButton.disabled = true;
+        submitButton.textContent = 'กำลังส่ง...';
+
+        const formData = new FormData();
+        formData.append('leaveType', document.getElementById('leaveType').value);
+        formData.append('startDate', document.getElementById('startDate').value);
+        formData.append('endDate', document.getElementById('endDate').value);
+        formData.append('reason', document.getElementById('reason').value);
+        formData.append('empId', user.Emp_ID);
+        formData.append('managerId', user.Manager_ID);
+
+        const fileInput = document.getElementById('attachment');
+        if (fileInput.files.length > 0) {
+            formData.append('attachment', fileInput.files[0]);
+        }
+
+        try {
+            const response = await fetch('http://localhost:3000/api/submit-leave', {
+                method: 'POST',
+                body: formData 
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                alert(result.message);
+                document.getElementById('leaveModal').style.display = 'none';
+                loadHistory(user.Emp_ID); 
+                loadBalances(user.Emp_ID); 
+            } else {
+                alert(result.message);
+                submitButton.disabled = false;
+                submitButton.textContent = 'ส่งคำขอ';
+            }
+        } catch (error) {
+            alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+            submitButton.disabled = false;
+            submitButton.textContent = 'ส่งคำขอ';
+        } finally {
+            document.getElementById('leaveRequestForm').reset();
+            submitButton.disabled = false;
+            submitButton.textContent = 'ส่งคำขอ';
+        }
+    });
+</script>
+
+</body>
+</html>

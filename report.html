@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สรุปรายงาน - ระบบลางานออนไลน์</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="logo">ระบบลางาน (HR/หัวหน้า)</div>
+        <nav>
+            <a href="manager.html">รายการอนุมัติ</a>
+            <a href="report.html">ดูรายงาน</a>
+            <a href="login.html" onclick="localStorage.clear()">ออกจากระบบ</a>
+        </nav>
+    </div>
+
+    <div class="container">
+
+        <div class="card">
+            <div class="card-header">
+                <h2>ตัวกรองรายงาน</h2>
+            </div>
+            
+            <form class="filter-container" id="reportFilterForm">
+                <div class="form-group">
+                    <label for="f_date_start">วันที่เริ่ม</label>
+                    <input type="date" id="f_date_start">
+                </div>
+                <div class="form-group">
+                    <label for="f_date_end">วันที่สิ้นสุด</label>
+                    <input type="date" id="f_date_end">
+                </div>
+                <div class="form-group">
+                    <label for="f_dept">แผนก</label>
+                    <select id="f_dept">
+                        <option value="">ทุกแผนก</option>
+                        <option value="1">IT</option>
+                        <option value="2">Sales</option>
+                        <option value="3">HR</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="f_leave_type">ประเภทการลา</label>
+                    <select id="f_leave_type">
+                        <option value="">ทุกประเภท</option>
+                        <option value="1">ลาป่วย</option>
+                        <option value="2">ลากิจ</option>
+                        <option value="3">ลาพักร้อน</option>
+                        <option value="4">ลาคลอด</option>
+                    </select>
+                </div>
+                 <button type="submit" class="btn">สร้างรายงาน</button>
+            </form>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h2>ตารางสรุปผล</h2>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>พนักงาน</th>
+                        <th>แผนก</th>
+                        <th>ประเภทการลา</th>
+                        <th>วันที่ลา</th>
+                        <th>จำนวนวัน</th>
+                        <th>สถานะ</th>
+                    </tr>
+                </thead>
+                <tbody id="reportTableBody">
+                    <tr>
+                        <td colspan="6" style="text-align: center;">กรุณากดสร้างรายงาน</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+<script>
+    document.getElementById('reportFilterForm').addEventListener('submit', async function(event) {
+        event.preventDefault(); 
+
+        const dept = document.getElementById('f_dept').value;
+        const leaveType = document.getElementById('f_leave_type').value;
+        const startDate = document.getElementById('f_date_start').value;
+        const endDate = document.getElementById('f_date_end').value;
+
+        const params = new URLSearchParams();
+        if (dept) params.append('dept', dept);
+        if (leaveType) params.append('leaveType', leaveType);
+        if (startDate) params.append('startDate', startDate);
+        if (endDate) params.append('endDate', endDate);
+
+        const tableBody = document.getElementById('reportTableBody');
+        tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">กำลังโหลดข้อมูล...</td></tr>';
+        
+        try {
+            const response = await fetch(`http://localhost:3000/api/report?${params.toString()}`);
+            const reportData = await response.json();
+
+            tableBody.innerHTML = ''; 
+
+            if (reportData.length === 0) {
+                 tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">ไม่พบข้อมูลตามเงื่อนไข</td></tr>';
+                 return;
+            }
+
+            reportData.forEach(r => {
+                
+                let statusText = '';
+                let statusColor = '';
+                if (r.Status === 'Approved') {
+                    statusText = 'อนุมัติแล้ว';
+                    statusColor = 'green';
+                } else if (r.Status === 'Rejected') {
+                    statusText = 'ไม่อนุมัติ';
+                    statusColor = 'red';
+                } else {
+                    statusText = 'รออนุมัติ';
+                    statusColor = 'orange';
+                }
+
+                tableBody.innerHTML += `
+                    <tr>
+                        <td>${r.FirstName} ${r.LastName}</td>
+                        <td>${r.DeptName}</td>
+                        <td>${r.TypeName}</td>
+                        <td>${new Date(r.StartDate).toLocaleDateString('th-TH')}</td>
+                        <td>${parseInt(r.TotalDays)}</td> 
+                        <td><span style="color: ${statusColor}; font-weight: bold;">${statusText}</span></td>
+                    </tr>
+                `;
+            });
+
+        } catch (error) {
+            console.error('Error fetching report:', error);
+            tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">ไม่สามารถโหลดรายงานได้ (กรุณาตรวจสอบ Console)</td></tr>';
+        }
+    });
+</script>
+
+</body>
+</html>

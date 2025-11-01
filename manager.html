@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>หน้าอนุมัติ - ระบบลางานออนไลน์</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="logo">ระบบลางาน (หัวหน้า)</div>
+        <nav>
+            <a href="manager.html">รายการอนุมัติ</a>
+            <a href="report.html">ดูรายงานทีม</a>
+            <a href="#" id="navUsername">(กำลังโหลด...)</a>
+            <a href="login.html" onclick="localStorage.clear()">ออกจากระบบ</a>
+        </nav>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h2>รายการรออนุมัติ</h2>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>พนักงาน</th>
+                        <th>ประเภทการลา</th>
+                        <th>วันที่ลา</th>
+                        <th>เหตุผล</th>
+                        <th>ดำเนินการ</th>
+                    </tr>
+                </thead>
+                <tbody id="pendingTableBody">
+                    <tr><td colspan="5" style="text-align: center;">กำลังโหลดรายการ...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+<script>
+    const manager = JSON.parse(localStorage.getItem('user'));
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!manager || manager.Manager_ID !== null) { 
+            alert('กรุณาเข้าสู่ระบบด้วยบัญชีหัวหน้า');
+            window.location.href = 'login.html';
+            return;
+        }
+        
+        document.getElementById('navUsername').textContent = `(หัวหน้า) ${manager.FirstName}`;
+        loadPendingRequests(manager.Emp_ID);
+    });
+
+    async function loadPendingRequests(managerId) {
+        
+        const tableBody = document.getElementById('pendingTableBody'); // [แก้ไข] ย้ายมาไว้ข้างนอก
+
+        try {
+            const response = await fetch(`http://localhost:3000/api/pending-requests/${managerId}`);
+            
+            if (!response.ok) { // [แก้ไข] เพิ่มการตรวจสอบ 404
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const requests = await response.json();
+            
+            tableBody.innerHTML = ''; 
+
+            if (requests.length === 0) {
+                 tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">ไม่พบรายการรออนุมัติ</td></tr>';
+                 return;
+            }
+
+            requests.forEach(r => {
+                tableBody.innerHTML += `
+                    <tr>
+                        <td>${r.FirstName} ${r.LastName}</td>
+                        <td>${r.TypeName}</td>
+                        <td>${new Date(r.StartDate).toLocaleDateString('th-TH')}</td>
+                        <td>${r.Reason || '-'}</td>
+                        <td>
+                            <a href="#" class="btn-approve" onclick="processRequest(${r.Request_ID}, 'Approved')">อนุมัติ</a>
+                            <a href="#" class="btn-reject" onclick="processRequest(${r.Request_ID}, 'Rejected')">ปฏิเสธ</a>
+                        </td>
+                    </tr>
+                `;
+            });
+        } catch (error) {
+            console.error('Fetch Error:', error); // [แก้ไข] แสดง Error จริงใน Console
+            tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">ไม่สามารถโหลดข้อมูลได้ (Server อาจจะดับ หรือ API ผิด)</td></tr>';
+        }
+    }
+
+    async function processRequest(requestId, newStatus) {
+        
+        const statusInThai = newStatus === 'Approved' ? 'อนุมัติ' : 'ปฏิเสธ'; // [แก้ไข] แปลภาษา
+
+        if (!confirm(`คุณแน่ใจหรือไม่ที่จะ "${statusInThai}" รายการนี้?`)) { // [แก้ไข] ใช้ภาษาไทย
+            return; 
+        }
+
+        try {
+            const response = await fetch('http://localhost:3000/api/process-request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ requestId, newStatus })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                alert(result.message); 
+                loadPendingRequests(manager.Emp_ID); 
+            } else {
+                alert('เกิดข้อผิดพลาด: ' + result.message);
+            }
+
+        } catch (error) {
+            alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+        }
+    }
+</script>
+
+</body>
+</html>
