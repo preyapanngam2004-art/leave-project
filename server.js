@@ -29,11 +29,14 @@ const upload = multer({ storage: storage });
 
 /* 4. [แก้ไข] ตั้งค่าการเชื่อมต่อ (อ่านจาก Railway) */
 const dbConfig = {
-    host: process.env.MYSQLHOST,
-    user: process.env.MYSQLUSER,
-    password: process.env.MYSQLPASSWORD,
-    database: process.env.MYSQLDATABASE,
-    port: process.env.MYSQLPORT
+    host: process.env.MYSQLHOST,
+    user: process.env.MYSQLUSER,
+    password: process.env.MYSQLPASSWORD,
+    database: process.env.MYSQLDATABASE,
+    port: process.env.MYSQLPORT,
+
+    // --- ‼️ เพิ่มบรรทัดนี้เข้าไปครับ ‼️ ---
+    ssl: { "rejectUnauthorized": true } 
 };
 
 async function getConnection() {
