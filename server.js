@@ -26,12 +26,13 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-/* 4. ตั้งค่าการเชื่อมต่อฐานข้อมูล (XAMPP ของคุณ) */
+/* 4. [แก้ไข] ตั้งค่าการเชื่อมต่อ (อ่านจาก Railway) */
 const dbConfig = {
-    host: 'localhost',
-    user: 'root', 
-    password: '',   
-    database: 'hr_leave_system'
+    host: process.env.MYSQLHOST,
+    user: process.env.MYSQLUSER,
+    password: process.env.MYSQLPASSWORD,
+    database: process.env.MYSQLDATABASE,
+    port: process.env.MYSQLPORT
 };
 
 async function getConnection() {
