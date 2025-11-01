@@ -7,7 +7,8 @@ const fs = require('fs');
 const nodemailer = require('nodemailer'); 
 
 const app = express();
-const PORT = 3000; 
+// Railway จะกำหนด PORT ให้เราเอง ถ้าไม่เจอ (รันเครื่องตัวเอง) ให้ใช้ 3000
+const PORT = process.env.PORT || 3000;
 
 /* 2. ตั้งค่า Middleware */
 app.use(express.json()); 
@@ -301,6 +302,7 @@ app.get('/api/report', async (req, res) => {
 });
 
 /* === 7. เริ่มรันเซิร์ฟเวอร์ === */
-app.listen(PORT, () => {
-    console.log(`Backend Server กำลังรันที่ http://localhost:${PORT}`);
+// เพิ่ม '0.0.0.0' เข้าไปตรงนี้ เพื่อให้ Railway รับการเชื่อมต่อจากภายนอกได้
+app.listen(PORT, '0.0.0.0', () => {
+ console.log(`Backend Server กำลังรันที่ port ${PORT}`);
 });
