@@ -31,11 +31,9 @@ const upload = multer({ storage: storage });
 const dbConfig = {
     host: process.env.MYSQLHOST,
     user: process.env.MYSQLUSER,
-    // ... (ตัวแปรอื่นๆ)
-    port: process.env.MYSQLPORT,
-    
-    // --- ‼️ ต้องเพิ่มบรรทัดนี้เข้าไปครับ ‼️ ---
-    ssl: { "rejectUnauthorized": true } 
+    password: process.env.MYSQLPASSWORD,
+    database: process.env.MYSQLDATABASE,
+    port: process.env.MYSQLPORT
 };
 
 async function getConnection() {
